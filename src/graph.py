@@ -12,6 +12,11 @@ from src.agents import (
 )
 from src.model import get_llm
 from src.router import make_router_node, route_decision
+from src.security import (
+    output_validator_node,
+    security_gate,
+    security_precheck_node,
+)
 from src.state import CopyWriter
 
 
@@ -20,15 +25,25 @@ def build_graph():
 
     graph_builder = StateGraph(CopyWriter)
 
+    graph_builder.add_node("security_precheck", security_precheck_node)
     graph_builder.add_node("router", make_router_node(llm))
     graph_builder.add_node("seo_blog_writer", make_seo_blog_writer_node(llm))
     graph_builder.add_node("x_blog_writer", make_x_blog_writer_node(llm))
     graph_builder.add_node("general", make_general_node(llm))
-
     graph_builder.add_node("seo_tools", seo_tool_node)
     graph_builder.add_node("x_tools", x_tool_node)
+    graph_builder.add_node("output_validator", output_validator_node)
 
-    graph_builder.set_entry_point("router")
+    graph_builder.set_entry_point("security_precheck")
+
+    graph_builder.add_conditional_edges(
+        "security_precheck",
+        security_gate,
+        {
+            "allowed": "router",
+            "blocked": END,
+        },
+    )
 
     graph_builder.add_conditional_edges(
         "router",
@@ -45,7 +60,7 @@ def build_graph():
         seo_should_continue,
         {
             "seo_tools": "seo_tools",
-            "end": END,
+            "end": "output_validator",
         },
     )
 
@@ -56,12 +71,13 @@ def build_graph():
         x_should_continue,
         {
             "x_tools": "x_tools",
-            "end": END,
+            "end": "output_validator",
         },
     )
 
     graph_builder.add_edge("x_tools", "x_blog_writer")
-    graph_builder.add_edge("general", END)
+    graph_builder.add_edge("general", "output_validator")
+    graph_builder.add_edge("output_validator", END)
 
     memory = MemorySaver()
 
