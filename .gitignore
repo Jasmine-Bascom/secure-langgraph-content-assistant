@@ -1,0 +1,49 @@
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache/build files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Jupyter / notebook artifacts
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Local app/cache/log outputs
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# LangChain / LangGraph traces or local outputs
+.langchain/
+langchain-cache/
+outputs/
+tmp/
+temp/
+
+# Optional: generated example outputs
+examples/generated/
