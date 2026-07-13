@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 LOG_DIR = Path("logs")
 LOG_PATH = LOG_DIR / "audit.jsonl"
 

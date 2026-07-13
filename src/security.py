@@ -7,7 +7,6 @@ from src.moderation import moderate_text
 from src.pii import redact_pii
 from src.state import CopyWriter
 
-
 PROMPT_INJECTION_PATTERNS = [
     r"(?i)ignore (all )?(previous|prior) instructions",
     r"(?i)disregard (all )?(previous|prior) instructions",
@@ -63,9 +62,7 @@ def security_precheck_node(state: CopyWriter):
     moderation = moderate_text(user_input)
 
     if moderation.flagged:
-        blocked_message = (
-            "I can’t process this request because it was flagged by the moderation layer."
-        )
+        blocked_message = "I can’t process this request because it was flagged by the moderation layer."
 
         write_audit_event(
             "security_precheck_blocked",
@@ -131,7 +128,9 @@ def output_validator_node(state: CopyWriter):
 
     for pattern in SECRET_PATTERNS:
         if re.search(pattern, output):
-            safe_output = "[Output blocked: potential secret or credential-like value detected.]"
+            safe_output = (
+                "[Output blocked: potential secret or credential-like value detected.]"
+            )
 
             write_audit_event(
                 "output_validation_failed",

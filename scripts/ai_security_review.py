@@ -6,7 +6,6 @@ from typing import Any
 
 from openai import OpenAI
 
-
 MAX_DIFF_CHARS = 40_000
 MAX_SCANNER_CHARS = 30_000
 OUTPUT_PATH = Path("ai-security-review.md")
@@ -222,8 +221,7 @@ END UNTRUSTED DATA
         )
 
         print(
-            f"AI security review failed: "
-            f"{type(exc).__name__}: {error_message}",
+            f"AI security review failed: {type(exc).__name__}: {error_message}",
             file=sys.stderr,
             flush=True,
         )
@@ -233,10 +231,7 @@ END UNTRUSTED DATA
     report = response.output_text.strip()
 
     if not report:
-        report = (
-            "# AI-Assisted Security Review\n\n"
-            "The model returned no review text."
-        )
+        report = "# AI-Assisted Security Review\n\nThe model returned no review text."
 
     OUTPUT_PATH.write_text(
         report + "\n",

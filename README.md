@@ -81,6 +81,7 @@ Developer Push / Pull Request
               ▼
         GitHub Actions
               │
+              ├── Ruff lint and formatting checks
               ├── pytest
               ├── Bandit
               ├── Semgrep
@@ -88,15 +89,24 @@ Developer Push / Pull Request
               ├── pip-audit
               ▼
       AI Security Review
-              ▼
-     Markdown Security Report
-              ▼
-   GitHub Actions Job Summary
-              ▼
- Workflow Artifacts
 ```
 
 ## Pipeline Components
+
+### Ruff
+
+Ruff performs fast Python linting, import validation, and formatting
+checks before the test and security-analysis stages.
+
+The pipeline runs:
+
+- `ruff check` for lint violations, unused imports, import ordering, and
+  selected bug-prone patterns
+- `ruff format --check` to ensure consistent source formatting
+
+Ruff is treated as a blocking code-quality gate so malformed or
+inconsistently formatted code does not proceed through the rest of the
+pipeline.
 
 ### Unit Testing
 
@@ -317,6 +327,7 @@ secure-langgraph-content-assistant/
 │   └── audit.jsonl (generated at runtime)
 ├── .env.example
 ├── .gitignore
+├── ruff.toml
 ├── README.md
 ├── requirements.txt
 └── requirements-security.txt
@@ -374,6 +385,7 @@ The GitHub Actions workflow runs automatically on:
 
 The workflow:
 
+- Runs Ruff linting and formatting checks
 - Runs unit tests
 - Executes Bandit
 - Executes Semgrep
@@ -456,6 +468,8 @@ Potential enhancements include:
 - GitHub Actions
 - CI/CD
 - DevSecOps
+- Python linting and formatting with Ruff
+- Automated code-quality gates
 - Application Security
 - Static Application Security Testing (Bandit, Semgrep)
 - Software Composition Analysis (pip-audit)

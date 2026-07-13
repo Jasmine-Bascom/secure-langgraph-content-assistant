@@ -3,7 +3,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.prompts import ROUTER_INSTRUCTIONS
 from src.state import CopyWriter
 
-
 VALID_ROUTES = {"seo_blog_writer", "x_blog_writer", "general"}
 
 

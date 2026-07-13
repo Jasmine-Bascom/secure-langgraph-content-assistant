@@ -1,4 +1,4 @@
-from src.tools import research_tool, internet_search_tool, SEO_TOOLS, X_TOOLS
+from src.tools import SEO_TOOLS, X_TOOLS, internet_search_tool, research_tool
 
 
 def test_research_tool_returns_topic_specific_notes():

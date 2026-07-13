@@ -40,8 +40,7 @@ def test_seo_agent_prepends_system_prompt():
     assert isinstance(llm.last_messages[0], SystemMessage)
     assert "seo" in llm.last_messages[0].content.lower()
     assert any(
-        isinstance(message, HumanMessage)
-        and "AI security" in message.content
+        isinstance(message, HumanMessage) and "AI security" in message.content
         for message in llm.last_messages
     )
 
@@ -54,10 +53,12 @@ def test_x_agent_prepends_system_prompt():
 
     assert result["output"] == "X post output"
     assert isinstance(llm.last_messages[0], SystemMessage)
-    assert "twitter" in llm.last_messages[0].content.lower() or "x/" in llm.last_messages[0].content.lower()
+    assert (
+        "twitter" in llm.last_messages[0].content.lower()
+        or "x/" in llm.last_messages[0].content.lower()
+    )
     assert any(
-        isinstance(message, HumanMessage)
-        and "password managers" in message.content
+        isinstance(message, HumanMessage) and "password managers" in message.content
         for message in llm.last_messages
     )
 

@@ -28,6 +28,7 @@ def run_graph_test(graph, user_input: str, thread_id: str):
 
     return result
 
+
 def main():
     graph = build_graph()
 

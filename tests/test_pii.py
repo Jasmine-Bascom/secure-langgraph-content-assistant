@@ -1,6 +1,5 @@
-from src.pii import redact_pii
 from src.moderation import ModerationDecision
-from src.pii import PiiRedactionResult
+from src.pii import PiiRedactionResult, redact_pii
 from src.security import security_precheck_node
 
 
@@ -34,6 +33,7 @@ def test_moderation_flag_blocks_input(monkeypatch):
 
     assert result["security_status"] == "block"
     assert "moderation" in result["security_reason"].lower()
+
 
 def test_pii_redaction_detects_phone_number():
     text = "Call me at 212-555-5555."

@@ -79,6 +79,18 @@ jobs:
             echo "No tests directory found; skipping tests."
           fi
 
+      - name: Run Ruff lint checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff check --output-format=github .
+
+      - name: Check Ruff formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruff format --check .
+
       - name: Run Bandit
         id: bandit
         continue-on-error: true
