@@ -1,12 +1,19 @@
 name: Security review
 
 on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
-permissions:
-  contents: read
 
 jobs:
   security-scans:
@@ -79,7 +86,7 @@ jobs:
       - name: Run AI security review
         if: ${{ env.OPENAI_API_KEY != '' }}
         run: python scripts/ai_security_review.py
-        
+
       - name: Add AI review to job summary
         if: ${{ env.OPENAI_API_KEY != '' }}
         run: |
