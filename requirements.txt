@@ -10,5 +10,3 @@ presidio_analyzer
 presidio_anonymizer
 spacy
 openai
-bandit
-pip-audit

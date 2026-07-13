@@ -47,3 +47,10 @@ temp/
 
 # Optional: generated example outputs
 examples/generated/
+
+bandit-results.json
+semgrep-results.json
+gitleaks-results.json
+pip-audit-results.json
+pr.diff
+ai-security-review.md

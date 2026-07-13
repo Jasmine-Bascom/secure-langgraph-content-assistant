@@ -100,7 +100,56 @@ jobs:
               > bandit-results.json
           fi
 
-          # Keep this step successful so later reports can still run.
+          exit 0
+
+      - name: Run Semgrep
+        id: semgrep
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+
+          semgrep scan \
+            --config p/default \
+            --error \
+            --json-output semgrep-results.json \
+            .
+
+          SEMGREP_EXIT=$?
+          echo "exit_code=$SEMGREP_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -s semgrep-results.json ]]; then
+            echo '{"error":"Semgrep did not produce a report"}' \
+              > semgrep-results.json
+          fi
+
+          exit 0
+
+      - name: Run Gitleaks secret scan
+        id: gitleaks
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+
+          docker run --rm \
+            --volume "$PWD:/repo" \
+            --workdir /repo \
+            ghcr.io/gitleaks/gitleaks:latest \
+            git \
+            --report-format json \
+            --report-path gitleaks-results.json \
+            --exit-code 1 \
+            --verbose \
+            .
+
+          GITLEAKS_EXIT=$?
+          echo "exit_code=$GITLEAKS_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -s gitleaks-results.json ]]; then
+            echo '[]' > gitleaks-results.json
+          fi
+
           exit 0
 
       - name: Run dependency audit
@@ -131,7 +180,6 @@ jobs:
               > pip-audit-results.json
           fi
 
-          # Preserve the report and continue to the AI-review step.
           exit 0
 
       - name: Capture pull-request diff
@@ -150,6 +198,8 @@ jobs:
             -- \
             ':!*.lock' \
             ':!bandit-results.json' \
+            ':!semgrep-results.json' \
+            ':!gitleaks-results.json' \
             ':!pip-audit-results.json' \
             > pr.diff
 
@@ -175,6 +225,8 @@ jobs:
                 -- \
                 ':!*.lock' \
                 ':!bandit-results.json' \
+                ':!semgrep-results.json' \
+                ':!gitleaks-results.json' \
                 ':!pip-audit-results.json' \
                 > pr.diff
             else
@@ -187,6 +239,8 @@ jobs:
                 -- \
                 ':!*.lock' \
                 ':!bandit-results.json' \
+                ':!semgrep-results.json' \
+                ':!gitleaks-results.json' \
                 ':!pip-audit-results.json' \
                 > pr.diff
             fi
@@ -198,6 +252,8 @@ jobs:
               -- \
               ':!*.lock' \
               ':!bandit-results.json' \
+              ':!semgrep-results.json' \
+              ':!gitleaks-results.json' \
               ':!pip-audit-results.json' \
               > pr.diff
           fi
@@ -263,6 +319,8 @@ jobs:
         shell: bash
         env:
           BANDIT_EXIT: ${{ steps.bandit.outputs.exit_code }}
+          SEMGREP_EXIT: ${{ steps.semgrep.outputs.exit_code }}
+          GITLEAKS_EXIT: ${{ steps.gitleaks.outputs.exit_code }}
           AUDIT_EXIT: ${{ steps.dependency-audit.outputs.exit_code }}
           AI_EXIT: ${{ steps.ai-review.outputs.exit_code }}
         run: |
@@ -272,6 +330,8 @@ jobs:
             echo "| Check | Exit code |"
             echo "|---|---:|"
             echo "| Bandit | \`${BANDIT_EXIT:-not available}\` |"
+            echo "| Semgrep | \`${SEMGREP_EXIT:-not available}\` |"
+            echo "| Gitleaks | \`${GITLEAKS_EXIT:-not available}\` |"
             echo "| pip-audit | \`${AUDIT_EXIT:-not available}\` |"
             echo "| AI review | \`${AI_EXIT:-skipped or not available}\` |"
             echo
@@ -290,6 +350,8 @@ jobs:
           name: security-review-${{ github.run_id }}
           path: |
             bandit-results.json
+            semgrep-results.json
+            gitleaks-results.json
             pip-audit-results.json
             pr.diff
             ai-security-review.md
