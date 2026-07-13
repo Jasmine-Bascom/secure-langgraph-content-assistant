@@ -180,9 +180,9 @@ END UNTRUSTED DATA
 
     try:
         response = client.responses.create(
-            model=os.getenv("OPENAI_MODEL", "gpt4o"),
-            input=prompt,
-        )
+    model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+    input=prompt,
+)
     except Exception as exc:
         OUTPUT_PATH.write_text(
             "# AI-Assisted Security Review\n\n"
