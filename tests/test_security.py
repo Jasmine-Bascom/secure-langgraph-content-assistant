@@ -110,11 +110,17 @@ def test_secret_like_openai_key_output_is_blocked():
 
 
 def test_secret_like_aws_key_output_is_blocked():
+    fake_aws_key = "AKIA" + "IOSFODNN7EXAMPLE"
+
     state = make_state(
         user_input="test",
         route="seo_blog_writer",
-        output="AWS_ACCESS_KEY_ID=FAKE_AABCDEFGHIJKLMNOP",
+        output=f"AWS_ACCESS_KEY_ID={fake_aws_key}",
     )
+
+    result = output_validator_node(state)
+
+    assert result["validation_status"] == "fail"
 
     result = output_validator_node(state)
 
