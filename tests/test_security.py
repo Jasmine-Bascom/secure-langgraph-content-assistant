@@ -113,7 +113,7 @@ def test_secret_like_aws_key_output_is_blocked():
     state = make_state(
         user_input="test",
         route="seo_blog_writer",
-        output="AWS_ACCESS_KEY_ID=AKIAABCDEFGHIJKLMNOP",
+        output="AWS_ACCESS_KEY_ID=FAKE_AABCDEFGHIJKLMNOP",
     )
 
     result = output_validator_node(state)
