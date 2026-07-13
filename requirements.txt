@@ -5,3 +5,4 @@ langchain-community
 python-dotenv
 tavily-python
 typing-extensions
+pytest
