@@ -6,3 +6,7 @@ python-dotenv
 tavily-python
 typing-extensions
 pytest
+presidio_analyzer
+presidio_anonymizer
+spacy
+openai

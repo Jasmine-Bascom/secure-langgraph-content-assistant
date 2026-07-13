@@ -2,6 +2,9 @@ import re
 
 from langchain_core.messages import AIMessage
 
+from src.audit import write_audit_event
+from src.moderation import moderate_text
+from src.pii import redact_pii
 from src.state import CopyWriter
 
 
@@ -28,7 +31,11 @@ SECRET_PATTERNS = [
 
 def security_precheck_node(state: CopyWriter):
     """
-    Runs before routing. Blocks obvious prompt-injection or tool-manipulation attempts.
+    Runs before routing.
+    Uses:
+    - regex for prompt-injection/tool manipulation patterns
+    - OpenAI moderation for harmful-content signals
+    - Presidio for PII redaction before routing
     """
     user_input = state["user_input"]
 
@@ -39,6 +46,13 @@ def security_precheck_node(state: CopyWriter):
                 "reveal hidden prompts, manipulate routing, or force tool use."
             )
 
+            write_audit_event(
+                "security_precheck_blocked",
+                reason="prompt_injection_pattern",
+                pattern=pattern,
+                user_input=user_input,
+            )
+
             return {
                 "security_status": "block",
                 "security_reason": f"Matched suspicious input pattern: {pattern}",
@@ -46,16 +60,57 @@ def security_precheck_node(state: CopyWriter):
                 "messages": [AIMessage(content=blocked_message)],
             }
 
+    moderation = moderate_text(user_input)
+
+    if moderation.flagged:
+        blocked_message = (
+            "I can’t process this request because it was flagged by the moderation layer."
+        )
+
+        write_audit_event(
+            "security_precheck_blocked",
+            reason="openai_moderation_flag",
+            categories=moderation.categories,
+            category_scores=moderation.category_scores,
+        )
+
+        return {
+            "security_status": "block",
+            "security_reason": "OpenAI moderation flagged the input.",
+            "output": blocked_message,
+            "messages": [AIMessage(content=blocked_message)],
+        }
+
+    pii_result = redact_pii(user_input)
+
+    if pii_result.entities:
+        write_audit_event(
+            "pii_redacted_input",
+            entity_types=[entity["entity_type"] for entity in pii_result.entities],
+            entity_count=len(pii_result.entities),
+        )
+
+        return {
+            "user_input": pii_result.redacted_text,
+            "security_status": "allow",
+            "security_reason": (
+                f"Input allowed after PII redaction. "
+                f"Redacted {len(pii_result.entities)} PII entities."
+            ),
+        }
+
+    write_audit_event(
+        "security_precheck_allowed",
+        reason="no_prompt_injection_no_moderation_flag_no_pii",
+    )
+
     return {
         "security_status": "allow",
-        "security_reason": "No obvious prompt-injection pattern detected.",
+        "security_reason": "Input passed prompt-injection, moderation, and PII checks.",
     }
 
 
 def security_gate(state: CopyWriter) -> str:
-    """
-    Decides whether to continue to the router or stop.
-    """
     if state.get("security_status") == "block":
         return "blocked"
 
@@ -64,7 +119,12 @@ def security_gate(state: CopyWriter) -> str:
 
 def output_validator_node(state: CopyWriter):
     """
-    Runs after an agent produces output. Checks for secret-like strings and route-specific constraints.
+    Runs after an agent produces output.
+    Uses:
+    - regex for secret-like strings
+    - OpenAI moderation for generated output
+    - Presidio for PII redaction in generated output
+    - X/Twitter length validation
     """
     output = state.get("output", "") or ""
     route = state.get("route", "")
@@ -73,6 +133,13 @@ def output_validator_node(state: CopyWriter):
         if re.search(pattern, output):
             safe_output = "[Output blocked: potential secret or credential-like value detected.]"
 
+            write_audit_event(
+                "output_validation_failed",
+                reason="secret_pattern",
+                pattern=pattern,
+                route=route,
+            )
+
             return {
                 "validation_status": "fail",
                 "validation_reason": f"Matched potential secret pattern: {pattern}",
@@ -80,13 +147,67 @@ def output_validator_node(state: CopyWriter):
                 "messages": [AIMessage(content=safe_output)],
             }
 
-    if route == "x_blog_writer" and len(output) > 280:
+    moderation = moderate_text(output)
+
+    if moderation.flagged:
+        safe_output = "[Output blocked: generated content was flagged by moderation.]"
+
+        write_audit_event(
+            "output_validation_failed",
+            reason="openai_moderation_flag",
+            route=route,
+            categories=moderation.categories,
+            category_scores=moderation.category_scores,
+        )
+
+        return {
+            "validation_status": "fail",
+            "validation_reason": "OpenAI moderation flagged the generated output.",
+            "output": safe_output,
+            "messages": [AIMessage(content=safe_output)],
+        }
+
+    pii_result = redact_pii(output)
+
+    if pii_result.entities:
+        write_audit_event(
+            "pii_redacted_output",
+            route=route,
+            entity_types=[entity["entity_type"] for entity in pii_result.entities],
+            entity_count=len(pii_result.entities),
+        )
+
         return {
             "validation_status": "warning",
-            "validation_reason": f"X/Twitter output is {len(output)} characters, which exceeds 280.",
+            "validation_reason": (
+                f"Output contained PII-like values; redacted "
+                f"{len(pii_result.entities)} entities."
+            ),
+            "output": pii_result.redacted_text,
+            "messages": [AIMessage(content=pii_result.redacted_text)],
         }
+
+    if route == "x_blog_writer" and len(output) > 280:
+        write_audit_event(
+            "output_validation_warning",
+            reason="x_post_length_exceeded",
+            route=route,
+            character_count=len(output),
+        )
+
+        return {
+            "validation_status": "warning",
+            "validation_reason": (
+                f"X/Twitter output is {len(output)} characters, which exceeds 280."
+            ),
+        }
+
+    write_audit_event(
+        "output_validation_passed",
+        route=route,
+    )
 
     return {
         "validation_status": "pass",
-        "validation_reason": "Output passed validation checks.",
+        "validation_reason": "Output passed secret, moderation, PII, and format checks.",
     }

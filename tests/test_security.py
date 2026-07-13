@@ -1,5 +1,39 @@
 from src.security import security_gate, security_precheck_node, output_validator_node
+from src.moderation import ModerationDecision
+from src.pii import PiiRedactionResult
+from src.security import security_precheck_node
 
+
+def test_moderation_flag_blocks_input(monkeypatch):
+    def fake_moderate_text(text):
+        return ModerationDecision(
+            flagged=True,
+            categories={"violence": True},
+            category_scores={"violence": 0.99},
+            reason="fake moderation result",
+        )
+
+    def fake_redact_pii(text):
+        return PiiRedactionResult(
+            original_text=text,
+            redacted_text=text,
+            entities=[],
+        )
+
+    monkeypatch.setattr("src.security.moderate_text", fake_moderate_text)
+    monkeypatch.setattr("src.security.redact_pii", fake_redact_pii)
+
+    state = {
+        "user_input": "Some risky content",
+        "route": "",
+        "output": "",
+        "messages": [],
+    }
+
+    result = security_precheck_node(state)
+
+    assert result["security_status"] == "block"
+    assert "moderation" in result["security_reason"].lower()
 
 def make_state(user_input: str, route: str = "", output: str = ""):
     return {
