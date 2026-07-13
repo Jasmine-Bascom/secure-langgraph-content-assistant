@@ -14,9 +14,20 @@ on:
       - synchronize
       - reopened
 
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   security-scans:
+    name: Security scans
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -26,83 +37,261 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-security.txt
 
       - name: Install project and security tools
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-security.txt
+          set -euo pipefail
 
-          if [ -f requirements.txt ]; then
+          python -m pip install --upgrade pip
+
+          if [[ -f requirements.txt ]]; then
             pip install -r requirements.txt
+          else
+            echo "No requirements.txt file found."
+          fi
+
+          if [[ -f requirements-security.txt ]]; then
+            pip install -r requirements-security.txt
+          else
+            echo "requirements-security.txt is required."
+            exit 1
           fi
 
       - name: Run tests
+        shell: bash
         run: |
-          if [ -d tests ]; then
-            python -m pytest
+          set -euo pipefail
+
+          if [[ -d tests ]]; then
+            python -m pytest -q
           else
-            echo "No tests directory found"
+            echo "No tests directory found; skipping tests."
           fi
 
       - name: Run Bandit
+        id: bandit
         continue-on-error: true
+        shell: bash
         run: |
+          set +e
+
           bandit \
             --recursive . \
             --exclude ./.venv,./tests \
             --format json \
             --output bandit-results.json
 
+          BANDIT_EXIT=$?
+          echo "exit_code=$BANDIT_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -s bandit-results.json ]]; then
+            echo '{"error":"Bandit did not produce a report"}' \
+              > bandit-results.json
+          fi
+
+          # Keep this step successful so later reports can still run.
+          exit 0
+
       - name: Run dependency audit
+        id: dependency-audit
         continue-on-error: true
+        shell: bash
         run: |
-          pip-audit \
-            --format json \
-            --output pip-audit-results.json
+          set +e
+
+          if [[ -f requirements.txt ]]; then
+            pip-audit \
+              --requirement requirements.txt \
+              --format json \
+              --output pip-audit-results.json
+
+            AUDIT_EXIT=$?
+          else
+            echo '{"error":"No requirements.txt file was found"}' \
+              > pip-audit-results.json
+
+            AUDIT_EXIT=0
+          fi
+
+          echo "exit_code=$AUDIT_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -s pip-audit-results.json ]]; then
+            echo '{"error":"pip-audit did not produce a report"}' \
+              > pip-audit-results.json
+          fi
+
+          # Preserve the report and continue to the AI-review step.
+          exit 0
 
       - name: Capture pull-request diff
         if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -euo pipefail
+
           git diff \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}" \
+            --unified=3 \
+            "$BASE_SHA" \
+            "$HEAD_SHA" \
+            -- \
+            ':!*.lock' \
+            ':!bandit-results.json' \
+            ':!pip-audit-results.json' \
             > pr.diff
 
       - name: Capture push diff
         if: ${{ github.event_name == 'push' }}
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          git diff \
-            "${{ github.event.before }}" \
-            "${{ github.sha }}" \
+          set -euo pipefail
+
+          ZERO_SHA="0000000000000000000000000000000000000000"
+
+          if [[ "$BEFORE_SHA" == "$ZERO_SHA" ]]; then
+            echo "First push to this branch; comparing the current commit with its parent."
+
+            if git rev-parse "${HEAD_SHA}^" >/dev/null 2>&1; then
+              git diff \
+                --unified=3 \
+                "${HEAD_SHA}^" \
+                "$HEAD_SHA" \
+                -- \
+                ':!*.lock' \
+                ':!bandit-results.json' \
+                ':!pip-audit-results.json' \
+                > pr.diff
+            else
+              echo "Repository has only one commit; capturing the root commit."
+
+              git show \
+                --format= \
+                --unified=3 \
+                "$HEAD_SHA" \
+                -- \
+                ':!*.lock' \
+                ':!bandit-results.json' \
+                ':!pip-audit-results.json' \
+                > pr.diff
+            fi
+          else
+            git diff \
+              --unified=3 \
+              "$BEFORE_SHA" \
+              "$HEAD_SHA" \
+              -- \
+              ':!*.lock' \
+              ':!bandit-results.json' \
+              ':!pip-audit-results.json' \
+              > pr.diff
+          fi
+
+      - name: Create placeholder diff for manual run
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          echo "No commit diff is available for this manual workflow run." \
             > pr.diff
 
-      - name: Upload scan evidence
+      - name: Ensure diff file exists
+        if: always()
+        shell: bash
+        run: |
+          if [[ ! -f pr.diff ]]; then
+            echo "The workflow could not generate a diff." > pr.diff
+          elif [[ ! -s pr.diff ]]; then
+            echo "No relevant file changes were found in this diff." > pr.diff
+          fi
+
+      - name: Run AI security review
+        id: ai-review
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+
+          python scripts/ai_security_review.py
+          AI_EXIT=$?
+
+          echo "exit_code=$AI_EXIT" >> "$GITHUB_OUTPUT"
+
+          if [[ ! -s ai-security-review.md ]]; then
+            cat > ai-security-review.md <<EOF
+          # AI-Assisted Security Review
+
+          The AI review did not produce a report.
+
+          Script exit code: \`$AI_EXIT\`
+          EOF
+          fi
+
+          exit 0
+
+      - name: Create skipped AI-review notice
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        shell: bash
+        run: |
+          cat > ai-security-review.md <<'EOF'
+          # AI-Assisted Security Review
+
+          The AI review was skipped because `OPENAI_API_KEY` was not
+          available to this workflow run.
+
+          The deterministic scanner reports are still available in the
+          workflow artifacts.
+          EOF
+
+      - name: Add results to job summary
+        if: always()
+        shell: bash
+        env:
+          BANDIT_EXIT: ${{ steps.bandit.outputs.exit_code }}
+          AUDIT_EXIT: ${{ steps.dependency-audit.outputs.exit_code }}
+          AI_EXIT: ${{ steps.ai-review.outputs.exit_code }}
+        run: |
+          {
+            echo "# Security review results"
+            echo
+            echo "| Check | Exit code |"
+            echo "|---|---:|"
+            echo "| Bandit | \`${BANDIT_EXIT:-not available}\` |"
+            echo "| pip-audit | \`${AUDIT_EXIT:-not available}\` |"
+            echo "| AI review | \`${AI_EXIT:-skipped or not available}\` |"
+            echo
+
+            if [[ -f ai-security-review.md ]]; then
+              cat ai-security-review.md
+            else
+              echo "No AI security review report was generated."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload security evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: security-scan-results
+          name: security-review-${{ github.run_id }}
           path: |
             bandit-results.json
             pip-audit-results.json
             pr.diff
-
-      - name: Run AI security review
-        if: ${{ env.OPENAI_API_KEY != '' }}
-        run: python scripts/ai_security_review.py
-
-      - name: Add AI review to job summary
-        if: ${{ env.OPENAI_API_KEY != '' }}
-        run: |
-          cat ai-security-review.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload AI review
-        if: ${{ env.OPENAI_API_KEY != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-security-review
-          path: ai-security-review.md
+            ai-security-review.md
+          if-no-files-found: warn
+          retention-days: 14
