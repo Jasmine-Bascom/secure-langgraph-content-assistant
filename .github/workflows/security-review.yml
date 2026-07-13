@@ -357,3 +357,38 @@ jobs:
             ai-security-review.md
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Enforce security policy
+        if: always()
+        shell: bash
+        env:
+          BANDIT_EXIT: ${{ steps.bandit.outputs.exit_code }}
+          SEMGREP_EXIT: ${{ steps.semgrep.outputs.exit_code }}
+          GITLEAKS_EXIT: ${{ steps.gitleaks.outputs.exit_code }}
+          AUDIT_EXIT: ${{ steps.dependency-audit.outputs.exit_code }}
+        run: |
+          set -euo pipefail
+
+          FAILED=0
+
+          if [[ "${GITLEAKS_EXIT:-0}" != "0" ]]; then
+            echo "Gitleaks detected a possible committed secret."
+            FAILED=1
+          fi
+
+          if [[ "${SEMGREP_EXIT:-0}" != "0" ]]; then
+            echo "Semgrep detected security findings."
+            FAILED=1
+          fi
+
+          if [[ "${BANDIT_EXIT:-0}" != "0" ]]; then
+            echo "Bandit detected security findings."
+            FAILED=1
+          fi
+
+          if [[ "${AUDIT_EXIT:-0}" != "0" ]]; then
+            echo "pip-audit detected vulnerable dependencies."
+            FAILED=1
+          fi
+
+          exit "$FAILED"
