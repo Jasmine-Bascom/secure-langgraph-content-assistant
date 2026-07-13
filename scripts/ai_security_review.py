@@ -180,7 +180,7 @@ END UNTRUSTED DATA
 
     try:
         response = client.responses.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-5.6"),
+            model=os.getenv("OPENAI_MODEL", "gpt4o"),
             input=prompt,
         )
     except Exception as exc:
