@@ -1,0 +1,93 @@
+name: Security review
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  security-scans:
+    runs-on: ubuntu-latest
+
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project and security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-security.txt
+
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then
+            python -m pytest
+          else
+            echo "No tests directory found"
+          fi
+
+      - name: Run Bandit
+        continue-on-error: true
+        run: |
+          bandit \
+            --recursive . \
+            --exclude ./.venv,./tests \
+            --format json \
+            --output bandit-results.json
+
+      - name: Run dependency audit
+        continue-on-error: true
+        run: |
+          pip-audit \
+            --format json \
+            --output pip-audit-results.json
+
+      - name: Capture pull-request diff
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff \
+            "origin/${{ github.base_ref }}...HEAD" \
+            -- . \
+            ':(exclude)*.lock' \
+            > pr.diff
+
+      - name: Upload scan evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            bandit-results.json
+            pip-audit-results.json
+            pr.diff
+
+      - name: Run AI security review
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        run: python scripts/ai_security_review.py
+        
+      - name: Add AI review to job summary
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        run: |
+          cat ai-security-review.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload AI review
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-security-review
+          path: ai-security-review.md
