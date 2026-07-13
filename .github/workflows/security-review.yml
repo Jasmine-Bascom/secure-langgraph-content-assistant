@@ -162,6 +162,7 @@ jobs:
           if [[ -f requirements.txt ]]; then
             pip-audit \
               --requirement requirements.txt \
+              --ignore-vuln GHSA-537c-gmf6-5ccf \
               --format json \
               --output pip-audit-results.json
 
