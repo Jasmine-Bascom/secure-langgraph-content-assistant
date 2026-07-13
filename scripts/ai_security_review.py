@@ -184,32 +184,28 @@ END UNTRUSTED DATA
     input=prompt,
 )
     except Exception as exc:
-        OUTPUT_PATH.write_text(
-        "# AI-Assisted Security Review\n\n"
-        f"Error type: `{type(exc).__name__}`\n\n"
-        f"Message:\n\n```\n{exc}\n```\n",
-        encoding="utf-8",
-    )
+        error_message = str(exc).replace("`", "'")
 
-    print(exc)
-    return 1
-
-    report = response.output_text.strip()
-
-    if not report:
         report = (
             "# AI-Assisted Security Review\n\n"
-            "The model returned no review text."
+            "The AI review could not be completed.\n\n"
+            f"**Error type:** `{type(exc).__name__}`\n\n"
+            f"**Error message:** {error_message}\n"
         )
 
-    OUTPUT_PATH.write_text(
-        report + "\n",
-        encoding="utf-8",
-    )
+        OUTPUT_PATH.write_text(
+            report,
+            encoding="utf-8",
+        )
 
-    print(report)
-    return 0
+        print(
+            f"AI security review failed: "
+            f"{type(exc).__name__}: {error_message}",
+            file=sys.stderr,
+            flush=True,
+        )
 
+        return 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

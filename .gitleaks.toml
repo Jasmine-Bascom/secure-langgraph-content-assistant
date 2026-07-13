@@ -1,0 +1,10 @@
+title = "Secure LangGraph Content Assistant Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic AWS credential fixture in security tests"
+paths = [
+  '''tests/test_security\.py'''
+]
