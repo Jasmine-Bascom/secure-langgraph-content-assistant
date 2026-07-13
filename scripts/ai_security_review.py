@@ -185,17 +185,14 @@ END UNTRUSTED DATA
 )
     except Exception as exc:
         OUTPUT_PATH.write_text(
-            "# AI-Assisted Security Review\n\n"
-            "The AI review could not be completed.\n\n"
-            f"Error type: `{type(exc).__name__}`\n",
-            encoding="utf-8",
-        )
+        "# AI-Assisted Security Review\n\n"
+        f"Error type: `{type(exc).__name__}`\n\n"
+        f"Message:\n\n```\n{exc}\n```\n",
+        encoding="utf-8",
+    )
 
-        print(
-            f"AI security review failed: {exc}",
-            file=sys.stderr,
-        )
-        return 1
+    print(exc)
+    return 1
 
     report = response.output_text.strip()
 
