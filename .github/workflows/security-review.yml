@@ -66,12 +66,19 @@ jobs:
             --output pip-audit-results.json
 
       - name: Capture pull-request diff
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          git fetch origin "${{ github.base_ref }}" --depth=1
           git diff \
-            "origin/${{ github.base_ref }}...HEAD" \
-            -- . \
-            ':(exclude)*.lock' \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            > pr.diff
+
+      - name: Capture push diff
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          git diff \
+            "${{ github.event.before }}" \
+            "${{ github.sha }}" \
             > pr.diff
 
       - name: Upload scan evidence
