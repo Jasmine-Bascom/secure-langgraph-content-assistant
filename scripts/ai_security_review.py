@@ -43,6 +43,8 @@ def normalize_json(content: str) -> str:
 
 
 def main() -> int:
+    print("Starting AI security review.", flush=True)
+
     api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
@@ -52,25 +54,46 @@ def main() -> int:
             "was not available.\n",
             encoding="utf-8",
         )
-        print("OPENAI_API_KEY is not set.", file=sys.stderr)
+
+        print(
+            "OPENAI_API_KEY is not set.",
+            file=sys.stderr,
+            flush=True,
+        )
+
         return 0
 
-    diff = read_file("pr.diff", MAX_DIFF_CHARS)
+    diff = read_file(
+        "pr.diff",
+        MAX_DIFF_CHARS,
+    )
 
     bandit_results = normalize_json(
-        read_file("bandit-results.json", MAX_SCANNER_CHARS)
+        read_file(
+            "bandit-results.json",
+            MAX_SCANNER_CHARS,
+        )
     )
 
     semgrep_results = normalize_json(
-        read_file("semgrep-results.json", MAX_SCANNER_CHARS)
+        read_file(
+            "semgrep-results.json",
+            MAX_SCANNER_CHARS,
+        )
     )
 
     gitleaks_results = normalize_json(
-        read_file("gitleaks-results.json", MAX_SCANNER_CHARS)
+        read_file(
+            "gitleaks-results.json",
+            MAX_SCANNER_CHARS,
+        )
     )
 
     dependency_results = normalize_json(
-        read_file("pip-audit-results.json", MAX_SCANNER_CHARS)
+        read_file(
+            "pip-audit-results.json",
+            MAX_SCANNER_CHARS,
+        )
     )
 
     prompt = f"""
@@ -180,9 +203,9 @@ END UNTRUSTED DATA
 
     try:
         response = client.responses.create(
-    model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-    input=prompt,
-)
+            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
+            input=prompt,
+        )
     except Exception as exc:
         error_message = str(exc).replace("`", "'")
 
@@ -206,6 +229,29 @@ END UNTRUSTED DATA
         )
 
         return 1
+
+    report = response.output_text.strip()
+
+    if not report:
+        report = (
+            "# AI-Assisted Security Review\n\n"
+            "The model returned no review text."
+        )
+
+    OUTPUT_PATH.write_text(
+        report + "\n",
+        encoding="utf-8",
+    )
+
+    print(
+        f"Wrote AI report to {OUTPUT_PATH.resolve()}",
+        flush=True,
+    )
+
+    print(report)
+
+    return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
