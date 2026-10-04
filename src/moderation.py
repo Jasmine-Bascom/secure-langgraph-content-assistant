@@ -12,7 +12,14 @@ class ModerationDecision:
     reason: str = ""
 
 
-client = OpenAI()
+def get_client() -> OpenAI:
+    """
+    Create the OpenAI client only when moderation is actually used.
+
+    This avoids requiring OPENAI_API_KEY merely to import
+    the LangGraph application package.
+    """
+    return OpenAI()
 
 
 def moderate_text(text: str) -> ModerationDecision:
@@ -24,6 +31,8 @@ def moderate_text(text: str) -> ModerationDecision:
             flagged=False,
             reason="Empty input; moderation skipped.",
         )
+
+    client = get_client()
 
     response = client.moderations.create(
         model="omni-moderation-latest",
