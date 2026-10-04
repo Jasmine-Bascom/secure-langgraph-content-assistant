@@ -147,8 +147,7 @@ def test_safe_output_passes_validation():
         user_input="test",
         route="seo_blog_writer",
         output=(
-            "Password managers help users generate, store, and "
-            "rotate strong unique passwords."
+            "Use long unique passwords and update them when needed."
         ),
     )
 
@@ -156,8 +155,6 @@ def test_safe_output_passes_validation():
 
     assert result["validation_status"] == "pass"
     assert "passed" in result["validation_reason"].lower()
-
-
 def test_overlong_x_output_gets_warning():
     long_output = "A" * 281
 
