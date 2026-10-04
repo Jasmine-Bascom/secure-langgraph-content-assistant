@@ -51,6 +51,12 @@ class CopyWriter(TypedDict):
     # Tool observability
     # -----------------------------------------------------
 
+    # Tool calls requested by the model.
     tool_calls: NotRequired[
+        list[dict]
+    ]
+
+    # Tool calls actually executed by ToolNode.
+    executed_tool_calls: NotRequired[
         list[dict]
     ]
