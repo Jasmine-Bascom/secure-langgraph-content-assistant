@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secure-langgraph-content-assistant"
+version = "0.1.0"
+description = "A security-focused LangGraph content assistant used for agent-security testing."
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph",
+    "langchain",
+    "langchain-openai",
+    "python-dotenv",
+    "presidio-analyzer",
+    "presidio-anonymizer",
+    "spacy",
+    "tavily-python",
+]
+
+[tool.setuptools]
+packages = ["src"]
