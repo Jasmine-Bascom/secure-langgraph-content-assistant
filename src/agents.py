@@ -57,9 +57,7 @@ def _run_instrumented_tool_node(
     produced after execution.
     """
 
-    raw_result = tool_node.invoke(
-        state
-    )
+    raw_result = tool_node.invoke(state)
 
     if isinstance(
         raw_result,
@@ -90,18 +88,9 @@ def _run_instrumented_tool_node(
 
         executed.append(
             {
-                "name": (
-                    message.name
-                    or "unknown_tool"
-                ),
-                "tool_call_id": (
-                    message.tool_call_id
-                ),
-                "result": (
-                    _json_safe_tool_result(
-                        message.content
-                    )
-                ),
+                "name": (message.name or "unknown_tool"),
+                "tool_call_id": (message.tool_call_id),
+                "result": (_json_safe_tool_result(message.content)),
                 "status": getattr(
                     message,
                     "status",
@@ -135,11 +124,7 @@ def _run_instrumented_tool_node(
 def make_seo_blog_writer_node(
     llm,
 ):
-    blog_writer_with_tools = (
-        llm.bind_tools(
-            SEO_TOOLS
-        )
-    )
+    blog_writer_with_tools = llm.bind_tools(SEO_TOOLS)
 
     def seo_blog_writer_node(
         state: CopyWriter,
@@ -150,19 +135,11 @@ def make_seo_blog_writer_node(
         )
 
         messages = [
-            SystemMessage(
-                content=(
-                    SEO_BLOG_INSTRUCTIONS
-                )
-            ),
+            SystemMessage(content=(SEO_BLOG_INSTRUCTIONS)),
             *history,
         ]
 
-        result = (
-            blog_writer_with_tools.invoke(
-                messages
-            )
-        )
+        result = blog_writer_with_tools.invoke(messages)
 
         if result.tool_calls:
             previous_calls = (
@@ -174,9 +151,7 @@ def make_seo_blog_writer_node(
             )
 
             return {
-                "messages": [
-                    result
-                ],
+                "messages": [result],
                 "tool_calls": [
                     *previous_calls,
                     *result.tool_calls,
@@ -184,16 +159,8 @@ def make_seo_blog_writer_node(
             }
 
         return {
-            "output": (
-                result.content
-            ),
-            "messages": [
-                AIMessage(
-                    content=(
-                        result.content
-                    )
-                )
-            ],
+            "output": (result.content),
+            "messages": [AIMessage(content=(result.content))],
         }
 
     return seo_blog_writer_node
@@ -207,11 +174,7 @@ def make_seo_blog_writer_node(
 def make_x_blog_writer_node(
     llm,
 ):
-    x_writer_with_tools = (
-        llm.bind_tools(
-            X_TOOLS
-        )
-    )
+    x_writer_with_tools = llm.bind_tools(X_TOOLS)
 
     def x_blog_writer_node(
         state: CopyWriter,
@@ -222,19 +185,11 @@ def make_x_blog_writer_node(
         )
 
         messages = [
-            SystemMessage(
-                content=(
-                    X_BLOG_INSTRUCTIONS
-                )
-            ),
+            SystemMessage(content=(X_BLOG_INSTRUCTIONS)),
             *history,
         ]
 
-        result = (
-            x_writer_with_tools.invoke(
-                messages
-            )
-        )
+        result = x_writer_with_tools.invoke(messages)
 
         if result.tool_calls:
             previous_calls = (
@@ -246,9 +201,7 @@ def make_x_blog_writer_node(
             )
 
             return {
-                "messages": [
-                    result
-                ],
+                "messages": [result],
                 "tool_calls": [
                     *previous_calls,
                     *result.tool_calls,
@@ -256,16 +209,8 @@ def make_x_blog_writer_node(
             }
 
         return {
-            "output": (
-                result.content
-            ),
-            "messages": [
-                AIMessage(
-                    content=(
-                        result.content
-                    )
-                )
-            ],
+            "output": (result.content),
+            "messages": [AIMessage(content=(result.content))],
         }
 
     return x_blog_writer_node
@@ -288,29 +233,15 @@ def make_general_node(
         )
 
         messages = [
-            SystemMessage(
-                content=(
-                    GENERAL_INSTRUCTIONS
-                )
-            ),
+            SystemMessage(content=(GENERAL_INSTRUCTIONS)),
             *history,
         ]
 
-        result = llm.invoke(
-            messages
-        )
+        result = llm.invoke(messages)
 
         return {
-            "output": (
-                result.content
-            ),
-            "messages": [
-                AIMessage(
-                    content=(
-                        result.content
-                    )
-                )
-            ],
+            "output": (result.content),
+            "messages": [AIMessage(content=(result.content))],
         }
 
     return general_node
@@ -320,13 +251,9 @@ def make_general_node(
 # Tool executors
 # ---------------------------------------------------------
 
-_seo_tool_executor = ToolNode(
-    SEO_TOOLS
-)
+_seo_tool_executor = ToolNode(SEO_TOOLS)
 
-_x_tool_executor = ToolNode(
-    X_TOOLS
-)
+_x_tool_executor = ToolNode(X_TOOLS)
 
 
 def seo_tool_node(
@@ -336,13 +263,9 @@ def seo_tool_node(
     Execute SEO tools and record actual execution results.
     """
 
-    return (
-        _run_instrumented_tool_node(
-            tool_node=(
-                _seo_tool_executor
-            ),
-            state=state,
-        )
+    return _run_instrumented_tool_node(
+        tool_node=(_seo_tool_executor),
+        state=state,
     )
 
 
@@ -353,13 +276,9 @@ def x_tool_node(
     Execute X/Twitter tools and record actual execution results.
     """
 
-    return (
-        _run_instrumented_tool_node(
-            tool_node=(
-                _x_tool_executor
-            ),
-            state=state,
-        )
+    return _run_instrumented_tool_node(
+        tool_node=(_x_tool_executor),
+        state=state,
     )
 
 
@@ -371,9 +290,7 @@ def x_tool_node(
 def seo_should_continue(
     state: CopyWriter,
 ) -> str:
-    last_message = (
-        state["messages"][-1]
-    )
+    last_message = state["messages"][-1]
 
     if getattr(
         last_message,
@@ -388,9 +305,7 @@ def seo_should_continue(
 def x_should_continue(
     state: CopyWriter,
 ) -> str:
-    last_message = (
-        state["messages"][-1]
-    )
+    last_message = state["messages"][-1]
 
     if getattr(
         last_message,

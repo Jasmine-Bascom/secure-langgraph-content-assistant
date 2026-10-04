@@ -10,9 +10,7 @@ from presidio_anonymizer import AnonymizerEngine
 class PiiRedactionResult:
     original_text: str
     redacted_text: str
-    entities: list[dict[str, Any]] = field(
-        default_factory=list
-    )
+    entities: list[dict[str, Any]] = field(default_factory=list)
 
 
 _analyzer: AnalyzerEngine | None = None
@@ -41,13 +39,9 @@ def get_analyzer() -> AnalyzerEngine:
             ],
         }
 
-        provider = NlpEngineProvider(
-            nlp_configuration=configuration
-        )
+        provider = NlpEngineProvider(nlp_configuration=configuration)
 
-        nlp_engine = (
-            provider.create_engine()
-        )
+        nlp_engine = provider.create_engine()
 
         _analyzer = AnalyzerEngine(
             nlp_engine=nlp_engine,
@@ -65,9 +59,7 @@ def get_anonymizer() -> AnonymizerEngine:
     global _anonymizer
 
     if _anonymizer is None:
-        _anonymizer = (
-            AnonymizerEngine()
-        )
+        _anonymizer = AnonymizerEngine()
 
     return _anonymizer
 
@@ -92,27 +84,19 @@ def redact_pii(
     analyzer = get_analyzer()
     anonymizer = get_anonymizer()
 
-    analyzer_results = (
-        analyzer.analyze(
-            text=text,
-            language="en",
-        )
+    analyzer_results = analyzer.analyze(
+        text=text,
+        language="en",
     )
 
-    anonymized = (
-        anonymizer.anonymize(
-            text=text,
-            analyzer_results=(
-                analyzer_results
-            ),
-        )
+    anonymized = anonymizer.anonymize(
+        text=text,
+        analyzer_results=(analyzer_results),
     )
 
     entities = [
         {
-            "entity_type": (
-                result.entity_type
-            ),
+            "entity_type": (result.entity_type),
             "start": result.start,
             "end": result.end,
             "score": result.score,
@@ -122,8 +106,6 @@ def redact_pii(
 
     return PiiRedactionResult(
         original_text=text,
-        redacted_text=(
-            anonymized.text
-        ),
+        redacted_text=(anonymized.text),
         entities=entities,
     )
