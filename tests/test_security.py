@@ -146,15 +146,15 @@ def test_safe_output_passes_validation():
     state = make_state(
         user_input="test",
         route="seo_blog_writer",
-        output=(
-            "Use long unique passwords and update them when needed."
-        ),
+        output=("Use long unique passwords and update them when needed."),
     )
 
     result = output_validator_node(state)
 
     assert result["validation_status"] == "pass"
     assert "passed" in result["validation_reason"].lower()
+
+
 def test_overlong_x_output_gets_warning():
     long_output = "A" * 281
 
