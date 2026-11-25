@@ -466,9 +466,8 @@ Current limitations include:
 - no Infrastructure-as-Code scanning
 - no container image scanning
 - Presidio currently constrains `cryptography` to a version affected by
-  `GHSA-537c-gmf6-5ccf`. The conflict is documented in `SECURITY.md`,
-  retained as a temporary risk exception, and monitored for an upstream
-  compatibility update.
+  `GHSA-537c-gmf6-5ccf`. This known dependency risk requires periodic reassessment
+  against current dependency versions and upstream compatibility updates.
 
 ---
 
