@@ -49,7 +49,7 @@ def security_precheck_node(state: CopyWriter):
                 "security_precheck_blocked",
                 reason="prompt_injection_pattern",
                 pattern=pattern,
-                user_input=user_input,
+                input_length=len(user_input),
             )
 
             return {

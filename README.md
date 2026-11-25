@@ -269,6 +269,33 @@ Security events are written as structured JSONL logs including:
 - validation failures
 - successful validation
 
+### Privacy-conscious audit logging
+
+Prompt-injection detection occurs before PII redaction.
+To minimize sensitive data retention, blocked prompt audit
+events record:
+
+- event timestamp
+- event type
+- detection reason
+- matched security pattern
+- input character count
+
+The original user prompt is intentionally excluded from
+these audit events.
+
+An automated regression test verifies that synthetic
+sensitive input is not included in the audit event and
+that blocked prompts do not reach downstream moderation
+or PII processing.
+
+The remediation was also verified against the actual
+JSONL audit log using synthetic input.
+
+This control applies to newly generated prompt-injection
+audit events. Historical logs and other application
+telemetry require separate retention controls.
+
 ---
 
 # Testing
