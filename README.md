@@ -34,6 +34,14 @@ The project demonstrates:
 
 ---
 
+## Companion Security Testing Project
+
+The [Agent Security Test Bench](https://github.com/Jasmine-Bascom/streamlit-prompt-injection-tester) provides adversarial testing, repeatable benchmarks, tool authorization evaluation, and structured security traces for this assistant.
+
+The test bench also provides an API-independent offline demonstration.
+
+---
+
 # Architecture
 
 ```text
@@ -344,7 +352,6 @@ secure-langgraph-content-assistant/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_agents.py
-│   ├── test_audit.py
 │   ├── test_pii.py
 │   ├── test_router.py
 │   ├── test_security.py
@@ -356,6 +363,7 @@ secure-langgraph-content-assistant/
 ├── .gitignore
 ├── ruff.toml
 ├── README.md
+├── pyproject.toml
 ├── requirements.txt
 └── requirements-security.txt
 ```
